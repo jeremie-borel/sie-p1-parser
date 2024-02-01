@@ -38,7 +38,7 @@ The frames are surrouned by the byte '7e' So each data pack is actually three fr
 7ea02ecf022313bd61020801ff060054ed4502020f00161e020309060100020802ff0600205ab502020f00161e0c3c7e
 ```
 
-From here, one take the list of OBIS codes and look at it in the data. For example Obis 1-0:72.7.0 from the counter translates to '0100480700' (hex representation of the bytes), which can be found in the raw data. Note that at this point, some of the obis cannot be found because the payload are splitted.
+From here, one take the list of OBIS codes and look at it in the data (one can find the OBIS code in the datasheet of the smartmeter. Full of typo obviously... but still some are correct ant the other can be guessed). For example Obis 1-0:72.7.0 from the counter translates to '0100480700' (hex representation of the bytes), which can be found in the raw data. Note that at this point, some of the obis cannot be found because the payload are splitted.
 
 This step allows to understand how the data are structured. Copy pasting another frame of data which is not here above and splitting it around these patterns, one gets:
 
