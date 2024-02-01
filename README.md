@@ -4,14 +4,14 @@ I've tried for a quite a while to decode the data coming from the P1 port of my 
 
 Amongst others, I've tried
 
-- (DSMR PARSER)[https://github.com/ndokter/dsmr_parser]
-- (Gurux.DLMS.Python)[https://github.com/Gurux/Gurux.DLMS.Python]
+- [DSMR PARSER](https://github.com/ndokter/dsmr_parser)
+- [Gurux.DLMS.Python](https://github.com/Gurux/Gurux.DLMS.Python)
 - iec62056-21
-- (dlms-cosem)[https://github.com/u9n/dlms-cosem]
-- (SlimmeLezer)[https://www.zuidwijk.com/product/slimmelezer/]
+- [dlms-cosem](https://github.com/u9n/dlms-cosem)
+- [SlimmeLezer](https://www.zuidwijk.com/product/slimmelezer/)
 - and others...
 
-Thanks to (this reply)[https://github.com/u9n/dlms-cosem/issues/71#issuecomment-1898325988] and its link to [https://hanporten.se/norska/protokollet/] I've been pointed in the right direction.
+Thanks to [this reply](https://github.com/u9n/dlms-cosem/issues/71#issuecomment-1898325988) and its link to (https://hanporten.se/norska/protokollet/) I've been pointed in the right direction.
 
 ### Disclaimer
 
