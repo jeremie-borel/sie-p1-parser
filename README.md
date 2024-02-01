@@ -15,7 +15,7 @@ Thanks to [this reply](https://github.com/u9n/dlms-cosem/issues/71#issuecomment-
 
 ### Disclaimer
 
-Rather than put here my own code and pretend it just works, I'll detail the steps I've taken to decrypt this mess. I'm sure the things I do look pathetic to anyone with a tiny bit of prior knowledge on how DLMS/HDLC and the like are structured but, as said before, none of the complex and very well written package I've found on the subject happened to work for my case.
+Rather than put here my own code and pretend it just works, I'll detail the steps I've taken to decrypt this mess. I'm sure the things I do look pathetic to anyone with a tiny bit of prior knowledge on how DLMS/HDLC and the like are structured but, as said before, none of the complex and very well written package I've found on the subject happened to work for my case. Anyway, comment are welcome.
 
 ## Steps to read the data
 
