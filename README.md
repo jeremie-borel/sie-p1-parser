@@ -6,13 +6,16 @@ Amongst others, I've tried
 
 - (DSMR PARSER)[https://github.com/ndokter/dsmr_parser]
 - (Gurux.DLMS.Python)[https://github.com/Gurux/Gurux.DLMS.Python]
-- ...
+- iec62056-21
+- (dlms-cosem)[https://github.com/u9n/dlms-cosem]
+- (SlimmeLezer)[https://www.zuidwijk.com/product/slimmelezer/]
+- and others...
 
-Thanks to (this reply)[https://github.com/u9n/dlms-cosem/issues/71#issuecomment-1898325988] I've been pointed in the right direction.
+Thanks to (this reply)[https://github.com/u9n/dlms-cosem/issues/71#issuecomment-1898325988] and its link to [https://hanporten.se/norska/protokollet/] I've been pointed in the right direction.
 
 ### Disclaimer
 
-Rather than put here my own code and pretend it just works, I'll detail here the step I've taken to decrypt this mess. I'm sure the things I do must looked pathetic to anyone with a tiny bit of prior knowledge on how DLMS/HDLC and the like are structured but, as said before, none of the complex and very well written package I've found on the subject happened to work.
+Rather than put here my own code and pretend it just works, I'll detail the steps I've taken to decrypt this mess. I'm sure the things I do look pathetic to anyone with a tiny bit of prior knowledge on how DLMS/HDLC and the like are structured but, as said before, none of the complex and very well written package I've found on the subject happened to work for my case.
 
 ## Steps to read the data
 
