@@ -91,8 +91,9 @@ class InfluxDb(Process):
                 for key, (t, v, unit) in self.data.items()
             ]
 
-            print(f"Would do something with {self.data}")
-            self.api.write(bucket=bucket, records=points)
+            print(f"will write now")
+            test = self.api.write(bucket=bucket, records=points)
+            print(test)
             time.sleep(30)
 
 
