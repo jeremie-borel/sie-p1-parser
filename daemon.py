@@ -52,9 +52,10 @@ class SieWorker(Process):
     def run(self):
         for data in self.reader.read():
             means = {}
-            for key, (t, value, unit) in data.items():
-                self.counters[key](t, value)
-                means[key] = PhysicalData(t, self.counters[key].mean(), unit)
+            for key, phd in data.items():
+                self.counters[key](phd.time, phd.value)
+                meantime, meanvalue = self.counters[key].mean()
+                means[key] = PhysicalData(meantime, meanvalue, phd.unit)
 
             self.data.update(means)
 
@@ -65,24 +66,25 @@ class InfluxDb(Process):
         self.api = client.write_api(write_options=SYNCHRONOUS)
         super().__init__()
 
-    def as_point(self, name: str, t: datetime.datetime, v: float, unit: str) -> Point:
+    def as_point(self, name: str, d:PhysicalData) -> Point:
         label = 'value'
-        if unit == 'V':
+        if d.unit == 'V':
             label = 'voltage'
-        elif unit == 'A':
+        elif d.unit == 'A':
             label = 'current'
-        elif unit == 'W':
+        elif d.unit == 'W':
             label == 'power'
-        elif unit == 'Wh':
+        elif d.unit == 'Wh':
             label = 'energy'
-        print("FF", v)
+        else:
+            print("KK", d)
         return (
             Point("home_power")
             .tag("location", "atelier")
             .tag("sensor", "p1sie")
-            .field('unit', unit)
-            .field(label, v)
-            .time(t)
+            .field('unit', d.unit)
+            .field(label, d.value)
+            .time(d.time)
         )
 
     def run(self):
@@ -92,8 +94,8 @@ class InfluxDb(Process):
                 continue
 
             points = [
-                self.as_point(key, t, v, unit)
-                for key, (t, v, unit) in self.data.items()
+                self.as_point(key, phd)
+                for key, phd in self.data.items()
             ]
 
             print(f"will write now")
