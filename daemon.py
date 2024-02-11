@@ -5,7 +5,8 @@ import time
 from multiprocessing.managers import SyncManager
 from multiprocessing import Process, Manager
 
-from p1parser.p1reader import SieP1Reader
+from p1parser.p1reader import SieP1Reader, get_map
+from p1parser.stats import TimeWeightedAverage, LastValue
 
 
 class CustomManager(SyncManager):
@@ -16,22 +17,35 @@ class SieWorker(Process):
     def __init__(self, shared_dict: dict):
         self.reader = SieP1Reader()
         self.data = shared_dict
+
+        self.counters = {}
+        for name, unit in get_map():
+            if unit in ['W', 'A', 'V']:
+                self.counters[name] = TimeWeightedAverage()
+            else:
+                self.counters[name] = LastValue()
         super().__init__()
 
     def run(self):
         for data in self.reader.read():
-            self.data.update(data)
-            time.sleep(10)
+            means = {}
+            for key, value in self.data.items():
+                self.counters[key](self.data['time'], value)
+                means[key] = self.counters[key].mean()
+
+            self.data.update(means)
+
 
 class InfluxDb(Process):
     def __init__(self, shared_dict: dict):
         self.data = shared_dict
         super().__init__()
-    
+
     def run(self):
         while True:
             print(f"Woud do something with {self.data}")
             time.sleep(6)
+
 
 def main():
     m = Manager()
