@@ -62,12 +62,10 @@ _map = [
     ('020309060100020802ff06', 'energy_export_tarif_plein', 'Wh'),
 ]
 
-
 class SieP1Reader:
     def __init__(self, tty: str = '/dev/ttyUSB0'):
         self.tty = tty
         self.raw_array = b''
-        self.last_data = {}
 
     # one should tweak the tty to its need.
     def _get_frame(self) -> Generator[bytearray, None, None]:
@@ -124,7 +122,7 @@ class SieP1Reader:
                     yield full_data
                     full_data = b''
 
-    def read(self):
+    def read(self) -> Generator[dict,None,None]:
         for frame in self._get_frame():
             data = {
                 'time': datetime.datetime.now(tz=datetime.timezone.utc)
@@ -141,15 +139,17 @@ class SieP1Reader:
                 except ValueError as e:
                     log.error("Could not parse data:")
                     log.exception(e)
-            self.last_data = data
             log.debug(f"Data framed parsed: {data}")
+            yield data
 
 def main():
     import sys
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     reader = SieP1Reader()
-    reader.read()
+    log.info("Hit Ctrl+C to stop the script")
+    while True:
+        reader.read()
 
 if __name__ == '__main__':
     main()
