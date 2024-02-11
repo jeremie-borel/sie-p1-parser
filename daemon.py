@@ -35,7 +35,6 @@ class InfluxDb(Process):
 
 def main():
     m = Manager()
-    m.start()
     shared_dict = m.dict()
     SieWorker(shared_dict).start()
 

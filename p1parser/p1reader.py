@@ -1,10 +1,12 @@
 """Proof of concept for a lame script that parses HDLC frames coming from P1 port for ASKRA AM550 meters."""
+from typing import Generator
 import logging
 import serial
 import time
 import datetime
 import sys
-from typing import Generator
+
+from .stats import TimeWeightedAverage, LastValue
 
 # flag wrapping hdlc frames
 flag_char = bytes.fromhex('7e')
@@ -14,6 +16,7 @@ start_seq = bytes.fromhex('7ea8a4cf0223039996e6e700')
 middle_pattern = bytes.fromhex('02020f')
 
 log = logging.getLogger(__name__)
+
 
 def format(raw: str) -> str:
     """Roughly format a frame to make it more or less human readable"""
@@ -44,28 +47,37 @@ def _parse_value(sig: bytearray, frame: bytearray) -> int:
     exponent = int.from_bytes(byte_exponent, byteorder="big", signed=True)
     # exponent = struct.unpack('>b', byte_exponent)[0]
 
-    return round(mantis*10**exponent,4)
+    return round(mantis*10**exponent, 4)
 
 
 _map = [
-    ('020309060100010700ff06', 'input_power', 'W'),
-    ('020309060100020700ff06', 'output_power', 'W'),
-    ('020309060100200700ff12', 'voltage1', 'V'),
-    ('020309060100340700ff12', 'voltage2', 'V'),
-    ('020309060100480700ff12', 'voltage3', 'V'),
-    ('0203090601001f0700ff12', 'current1', 'A'),
-    ('020309060100330700ff12', 'current2', 'A'),
-    ('020309060100470700ff12', 'current3', 'A'),
-    ('020309060100010801ff06', 'energy_import_tarif_plein', 'Wh'),
-    ('020309060100010802ff06', 'energy_import_tarif_creux', 'Wh'),
-    ('020309060100020801ff06', 'energy_export_tarif_plein', 'Wh'),
-    ('020309060100020802ff06', 'energy_export_tarif_plein', 'Wh'),
+    ('input_power', '020309060100010700ff06',  'W', TimeWeightedAverage),
+    ('output_power', '020309060100020700ff06',  'W', TimeWeightedAverage),
+    ('voltage1', '020309060100200700ff12',  'V', TimeWeightedAverage),
+    ('voltage2', '020309060100340700ff12',  'V', TimeWeightedAverage),
+    ('voltage3', '020309060100480700ff12',  'V', TimeWeightedAverage),
+    ('current1', '0203090601001f0700ff12',  'A', TimeWeightedAverage),
+    ('current2', '020309060100330700ff12',  'A', TimeWeightedAverage),
+    ('current3', '020309060100470700ff12',  'A', TimeWeightedAverage),
+    ('energy_import_tarif_plein', '020309060100010801ff06', 'Wh', LastValue),
+    ('energy_import_tarif_creux', '020309060100010802ff06', 'Wh', LastValue),
+    ('energy_export_tarif_plein', '020309060100020801ff06', 'Wh', LastValue),
+    ('energy_export_tarif_plein', '020309060100020802ff06', 'Wh', LastValue),
 ]
+
 
 class SieP1Reader:
     def __init__(self, tty: str = '/dev/ttyUSB0'):
         self.tty = tty
         self.raw_array = b''
+        self.counters = {
+            key: {
+                'signature': sig,
+                'unit': unit,
+                'counter': klass(),
+            }
+            for key, sig, unit, klass in _map
+        }
 
     # one should tweak the tty to its need.
     def _get_frame(self) -> Generator[bytearray, None, None]:
@@ -122,25 +134,30 @@ class SieP1Reader:
                     yield full_data
                     full_data = b''
 
-    def read(self) -> Generator[dict,None,None]:
+    def read(self) -> Generator[dict, None, None]:
         for frame in self._get_frame():
-            data = {
-                'time': datetime.datetime.now(tz=datetime.timezone.utc)
-            }
-            for signature, name, unit in _map:
+            now = datetime.datetime.now(tz=datetime.timezone.utc)
+            data = {}
+            for key, c in self.counters.items():
                 try:
-                    data[name] = [
-                        _parse_value(
-                            sig=bytes.fromhex(signature),
-                            frame=frame,
-                        ),
-                        unit,
-                    ]
+                    value = _parse_value(
+                        sig=bytes.fromhex(c['signature']),
+                        frame=frame,
+                    )
                 except ValueError as e:
                     log.error("Could not parse data:")
                     log.exception(e)
+                    continue
+                c['counter'](now, value)
+                t, v = c['counter'].mean()
+                data[key] = {
+                    'time': t,
+                    'value': v,
+                    'unit': c['unit'],
+                }
             log.debug(f"Data framed parsed: {data}")
             yield data
+
 
 def main():
     import sys
@@ -150,6 +167,7 @@ def main():
     log.info("Hit Ctrl+C to stop the script")
     while True:
         reader.read()
+
 
 if __name__ == '__main__':
     main()
