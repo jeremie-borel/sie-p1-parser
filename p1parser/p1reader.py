@@ -146,6 +146,7 @@ class SieP1Reader:
                         unit,
                     ]
                 except ValueError as e:
+                    print("sdf", e)
                     log.error("Could not parse data:")
                     log.exception(e)
             log.debug(f"Data framed parsed: {data}")
@@ -158,8 +159,9 @@ def main():
 
     reader = SieP1Reader()
     log.info("Hit Ctrl+C to stop the script")
-    while True:
-        reader.read()
+    for data in reader.read():
+        print('data:', data)
+
 
 
 if __name__ == '__main__':
