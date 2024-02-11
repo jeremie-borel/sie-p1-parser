@@ -29,6 +29,7 @@ client = InfluxDBClient(
     token=token,
     org=orgid,
     verify_ssl=False,
+    timeout=60,
 )
 
 
