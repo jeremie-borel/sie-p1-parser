@@ -84,6 +84,11 @@ class SieP1Reader:
 
     to create /etc/udev/rules.d/99_usb0.rules with content:
     KERNEL=="ttyUSB0", SYMLINK+="serialFTDI"
+
+    Don't forget to 
+    usermod -a -G dialout <yourname>
+    to allow to read the tty with a unpriviledge user and to login and logout to have the new
+    group permissions applied.
     """
     def __init__(self, tty: str = '/dev/serialFTDI'):
         self.tty = tty
