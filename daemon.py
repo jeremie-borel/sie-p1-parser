@@ -23,14 +23,14 @@ from p1parser.tokens import (
     orgid,
 )
 
-bucket = "dummy"
-client = InfluxDBClient(
-    url=host,
-    token=token,
-    org=orgid,
-    verify_ssl=False,
-    timeout=60,
-)
+def get_client() -> InfluxDBClient:
+    return InfluxDBClient(
+        url=host,
+        token=token,
+        org=orgid,
+        verify_ssl=False,
+        timeout=60,
+    )
 
 
 class CustomManager(SyncManager):
@@ -63,7 +63,6 @@ class SieWorker(Process):
 class InfluxDb(Process):
     def __init__(self, shared_dict: dict[str, PhysicalData]):
         self.data = shared_dict
-        self.api = client.write_api(write_options=SYNCHRONOUS)
         super().__init__()
 
     def as_point(self, name: str, t: datetime.datetime, v: float, unit: str) -> Point:
@@ -95,12 +94,13 @@ class InfluxDb(Process):
             ]
 
             print(f"will write now")
-            test = self.api.write(
-                bucket=bucket,
+            client = get_client()
+            api = client.write_api(write_options=SYNCHRONOUS)
+            api.write(
+                bucket="dummy",
                 records=points,
                 write_precision=WritePrecision.S,
             )
-            print(test)
             time.sleep(30)
 
 
