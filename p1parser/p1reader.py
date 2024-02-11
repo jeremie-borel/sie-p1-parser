@@ -108,7 +108,7 @@ class SieP1Reader:
             bytes_array = b''
             while True:
                 time.sleep(0.5)
-                b = ser.read_until(expected=flag_char, size=900)
+                b = ser.read_until(expected=flag_char, size=1500)
                 bytes_array += b
                 self.raw_array += b
 

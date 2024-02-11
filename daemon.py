@@ -8,7 +8,11 @@ from multiprocessing import Process, Manager
 
 from influxdb_client import Point
 from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.client.write_api import (
+    SYNCHRONOUS,
+    WritePrecision,
+)
+
 
 from p1parser.p1reader import SieP1Reader, get_map
 from p1parser.stats import TimeWeightedAverage, LastValue, PhysicalData
@@ -71,14 +75,12 @@ class InfluxDb(Process):
             label == 'power'
         elif unit == 'Wh':
             label = 'energy'
-        return (
-            Point("home_power")
-            .tag("location", "atelier")
-            .tag("sensor", "p1sie")
-            .field('unit', unit)
-            .field(label, v)
-            .time(t)
-        )
+        return Point.from_dict({
+            "measurement": "home_power",
+            "tags": {'type': label, 'sensor': 'p1sie'},
+            "fields": {'unit': unit, 'value':v},
+            "time": t,
+        })
 
     def run(self):
         while True:
@@ -92,7 +94,11 @@ class InfluxDb(Process):
             ]
 
             print(f"will write now")
-            test = self.api.write(bucket=bucket, records=points)
+            test = self.api.write(
+                bucket=bucket,
+                records=points,
+                write_precision=WritePrecision.S,
+            )
             print(test)
             time.sleep(30)
 
