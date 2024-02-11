@@ -23,14 +23,13 @@ from p1parser.tokens import (
     orgid,
 )
 
-def get_client() -> InfluxDBClient:
-    return InfluxDBClient(
-        url=host,
-        token=token,
-        org=orgid,
-        verify_ssl=False,
-        timeout=60,
-    )
+bucket = "dummy"
+client = InfluxDBClient(
+    url=host,
+    token=token,
+    org=orgid,
+    verify_ssl=False,
+)
 
 
 class CustomManager(SyncManager):
@@ -63,6 +62,7 @@ class SieWorker(Process):
 class InfluxDb(Process):
     def __init__(self, shared_dict: dict[str, PhysicalData]):
         self.data = shared_dict
+        self.api = client.write_api(write_options=SYNCHRONOUS)
         super().__init__()
 
     def as_point(self, name: str, t: datetime.datetime, v: float, unit: str) -> Point:
@@ -75,12 +75,15 @@ class InfluxDb(Process):
             label == 'power'
         elif unit == 'Wh':
             label = 'energy'
-        return Point.from_dict({
-            "measurement": "home_power",
-            "tags": {'type': label, 'sensor': 'p1sie'},
-            "fields": {'unit': unit, 'value':v},
-            "time": t,
-        })
+        print("FF", v)
+        return (
+            Point("home_power")
+            .tag("location", "atelier")
+            .tag("sensor", "p1sie")
+            .field('unit', unit)
+            .field(label, v)
+            .time(t)
+        )
 
     def run(self):
         while True:
@@ -94,12 +97,10 @@ class InfluxDb(Process):
             ]
 
             print(f"will write now")
-            client = get_client()
-            api = client.write_api(write_options=SYNCHRONOUS)
-            api.write(
-                bucket="dummy",
-                records=points,
-                write_precision=WritePrecision.S,
+            test = self.api.write(
+                bucket=bucket,
+                record=points,
+                write_precision=WritePrecision.S
             )
             time.sleep(30)
 
