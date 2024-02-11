@@ -29,8 +29,9 @@ class SieWorker(Process):
     def run(self):
         for data in self.reader.read():
             means = {}
-            for key, (value, unit) in self.data.items():
-                self.counters[key](self.data['time'], value)
+            t = data.pop('time')
+            for key, (value, unit) in data.items():
+                self.counters[key](t, value)
                 means[key] = self.counters[key].mean()
 
             self.data.update(means)
