@@ -29,7 +29,7 @@ class SieWorker(Process):
     def run(self):
         for data in self.reader.read():
             means = {}
-            for key, value in self.data.items():
+            for key, (value, unit) in self.data.items():
                 self.counters[key](self.data['time'], value)
                 means[key] = self.counters[key].mean()
 

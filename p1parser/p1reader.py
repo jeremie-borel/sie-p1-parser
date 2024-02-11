@@ -146,7 +146,6 @@ class SieP1Reader:
                         unit,
                     ]
                 except ValueError as e:
-                    print("sdf", e)
                     log.error("Could not parse data:")
                     log.exception(e)
             log.debug(f"Data framed parsed: {data}")
