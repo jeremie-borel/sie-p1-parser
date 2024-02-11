@@ -1,1 +1,7 @@
 tokens.py
+
+__pycache__
+*.pyc
+
+bin/
+lib/
