@@ -4,7 +4,10 @@ import serial
 import time
 import datetime
 import sys
+
 from typing import Generator
+
+from p1parser.stats import PhysicalData
 
 # flag wrapping hdlc frames
 flag_char = bytes.fromhex('7e')
@@ -133,18 +136,18 @@ class SieP1Reader:
 
     def read(self) -> Generator[dict, None, None]:
         for frame in self._get_frame():
-            data = {
-                'time': datetime.datetime.now(tz=datetime.timezone.utc)
-            }
+            data = {}
+            t = datetime.datetime.now(tz=datetime.timezone.utc)
             for signature, name, unit in _map:
                 try:
-                    data[name] = [
+                    data[name] = PhysicalData(
+                        t, 
                         _parse_value(
                             sig=bytes.fromhex(signature),
                             frame=frame,
                         ),
                         unit,
-                    ]
+                    )
                 except ValueError as e:
                     log.error("Could not parse data:")
                     log.exception(e)

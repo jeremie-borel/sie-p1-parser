@@ -1,12 +1,31 @@
 # https://stackoverflow.com/questions/2545961/how-to-synchronize-a-python-dict-with-multiprocessing
 # dummy demo of a server connecting sharing a dict to a client
 import time
+import datetime
 
 from multiprocessing.managers import SyncManager
 from multiprocessing import Process, Manager
 
+from influxdb_client import Point
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+
 from p1parser.p1reader import SieP1Reader, get_map
-from p1parser.stats import TimeWeightedAverage, LastValue
+from p1parser.stats import TimeWeightedAverage, LastValue, PhysicalData
+
+from p1parser.tokens import (
+    token,
+    host,
+    orgid,
+)
+
+bucket = "dummy"
+client = InfluxDBClient(
+    url=host,
+    token=token,
+    org=orgid,
+    verify_ssl=False,
+)
 
 
 class CustomManager(SyncManager):
@@ -29,23 +48,52 @@ class SieWorker(Process):
     def run(self):
         for data in self.reader.read():
             means = {}
-            t = data.pop('time')
-            for key, (value, unit) in data.items():
+            for key, (t, value, unit) in data.items():
                 self.counters[key](t, value)
-                means[key] = self.counters[key].mean()
+                means[key] = PhysicalData(t, self.counters[key].mean(), unit)
 
             self.data.update(means)
 
 
 class InfluxDb(Process):
-    def __init__(self, shared_dict: dict):
+    def __init__(self, shared_dict: dict[str, PhysicalData]):
         self.data = shared_dict
+        self.api = client.write_api(write_options=SYNCHRONOUS)
         super().__init__()
+
+    def as_point(self, name: str, t: datetime.datetime, v: float, unit: str) -> Point:
+        label = 'value'
+        if unit == 'V':
+            label = 'voltage'
+        elif unit == 'A':
+            label = 'current'
+        elif unit == 'W':
+            label == 'power'
+        elif unit == 'Wh':
+            label = 'energy'
+        return (
+            Point("home_power")
+            .tag("location", "atelier")
+            .tag("sensor", "p1sie")
+            .field('unit', unit)
+            .field(label, v)
+            .time(t)
+        )
 
     def run(self):
         while True:
-            print(f"Woud do something with {self.data}")
-            time.sleep(6)
+            if not self.data:
+                time.sleep(2)
+                continue
+
+            points = [
+                self.as_point(key, t, v, unit)
+                for key, (t, v, unit) in self.data.items()
+            ]
+
+            print(f"Would do something with {self.data}")
+            self.api.write(bucket=bucket, records=points)
+            time.sleep(30)
 
 
 def main():

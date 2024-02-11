@@ -1,7 +1,10 @@
-import datetime
 from typing import Any
+import datetime
+from collections import namedtuple
 
+PhysicalData = namedtuple('PhysicalData', 'time value unit')
 
+# https://www.timescale.com/blog/what-time-weighted-averages-are-and-why-you-should-care/
 class TimeWeightedAverage:
     t0: datetime.datetime
     ti: datetime.datetime
