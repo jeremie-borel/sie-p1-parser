@@ -153,6 +153,7 @@ class SieP1Reader:
         for frame in self._get_frame():
             data = {}
             t = datetime.datetime.now(tz=datetime.timezone.utc)
+            error = False
             for signature, name, unit in _map:
                 try:
                     data[name] = PhysicalData(
@@ -165,7 +166,10 @@ class SieP1Reader:
                     )
                 except ValueError as e:
                     log.error("Could not parse data:")
-                    log.exception(e)
+                    error = True                    
+            if error:
+                continue
+
             log.debug(f"Data framed parsed: {data}")
             yield data
 

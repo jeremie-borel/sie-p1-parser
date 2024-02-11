@@ -41,23 +41,23 @@ class SieWorker(Process):
         self.reader = SieP1Reader()
         self.data = shared_dict
 
-        self.counters = {}
         for name, unit in get_map():
             if unit in ['W', 'A', 'V']:
-                self.counters[name] = TimeWeightedAverage()
+                self.data[name] = {
+                    'twa': TimeWeightedAverage(),
+                    'unit': unit,
+                }
             else:
-                self.counters[name] = LastValue()
+                self.data[name] = {
+                    'twa': LastValue(),
+                    'unit': unit,
+                }
         super().__init__()
 
     def run(self):
         for data in self.reader.read():
-            means = {}
             for key, phd in data.items():
-                self.counters[key](phd.time, phd.value)
-                meantime, meanvalue = self.counters[key].mean()
-                means[key] = PhysicalData(meantime, meanvalue, phd.unit)
-
-            self.data.update(means)
+                self.data[key]['twa'](phd.time, phd.value)
 
 
 class InfluxDb(Process):
@@ -66,24 +66,27 @@ class InfluxDb(Process):
         self.api = client.write_api(write_options=SYNCHRONOUS)
         super().__init__()
 
-    def as_point(self, name: str, d:PhysicalData) -> Point:
+    def as_point(self, name: str, arg:dict) -> Point:
         label = 'value'
-        if d.unit == 'V':
+        unit = arg['unit']
+        if unit == 'V':
             label = 'voltage'
-        elif d.unit == 'A':
+        elif unit == 'A':
             label = 'current'
-        elif d.unit == 'W':
+        elif unit == 'W':
             label == 'power'
-        elif d.unit == 'Wh':
+        elif unit == 'Wh':
             label = 'energy'
+        t, value = arg['twa'].mean()
+        arg['twa'].reset()
+
         return (
             Point("home_power")
-            .tag("location", "atelier")
             .tag("sensor", "p1sie")
             .tag("type", label)
-            .tag("unit", d.unit)
-            .field(name, float(d.value))
-            .time(d.time)
+            .tag("unit", unit)
+            .field(name, float(value))
+            .time(t)
         )
 
     def run(self):
@@ -93,11 +96,11 @@ class InfluxDb(Process):
                 continue
 
             points = [
-                self.as_point(key, phd)
-                for key, phd in self.data.items()
+                self.as_point(key, arg)
+                for key, arg in self.data.items()
             ]
 
-            print(f"will write now")
+            print(f"write data")
             self.api.write(
                 bucket=bucket,
                 record=points,

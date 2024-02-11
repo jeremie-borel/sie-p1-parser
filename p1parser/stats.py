@@ -15,6 +15,9 @@ class TimeWeightedAverage:
         self._inialize = False
         self.sum = 0
 
+    def reset(self):
+        self._inialize = False        
+
     def __call__(self, t: datetime.datetime, v: float) -> None:
         if not self._inialize:
             self.t0 = t
@@ -40,6 +43,9 @@ class TimeWeightedAverage:
 class LastValue:
     ti: datetime.datetime
     vi: float
+
+    def reset(self):
+        pass
 
     def __call__(self, t: datetime.datetime, v: float) -> None:
         self.ti = t
