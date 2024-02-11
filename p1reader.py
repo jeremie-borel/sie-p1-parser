@@ -44,7 +44,7 @@ def _parse_value(sig: bytearray, frame: bytearray) -> int:
     exponent = int.from_bytes(byte_exponent, byteorder="big", signed=True)
     # exponent = struct.unpack('>b', byte_exponent)[0]
 
-    return mantis*10**exponent
+    return round(mantis*10**exponent,4)
 
 
 _map = [
@@ -127,7 +127,7 @@ class SieP1Reader:
     def read(self):
         for frame in self._get_frame():
             data = {
-                'time': datetime.datetime.now(tz=datetime.UTC)
+                'time': datetime.datetime.now(tz=datetime.timezone.utc)
             }
             for signature, name, unit in _map:
                 try:
