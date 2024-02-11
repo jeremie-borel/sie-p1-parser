@@ -5,7 +5,7 @@ import time
 from multiprocessing.managers import SyncManager
 from multiprocessing import Process, Manager
 
-from .p1reader import SieP1Reader
+from p1parser.p1reader import SieP1Reader
 
 
 class CustomManager(SyncManager):

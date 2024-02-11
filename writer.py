@@ -3,7 +3,7 @@
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from .tokens import (
+from p1parser.tokens import (
     token,
     host,
     orgid,
