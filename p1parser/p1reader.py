@@ -75,7 +75,17 @@ def get_map() -> list[tuple[str, str]]:
 
 
 class SieP1Reader:
-    def __init__(self, tty: str = '/dev/ttyUSB0'):
+    """
+    Find the correct tty using for example this answer:
+    https://unix.stackexchange.com/a/144735/601656
+
+    Then create a permanent link to the tty by using:
+    https://unix.stackexchange.com/questions/445450/how-to-create-a-permanent-symlink-to-a-device
+
+    to create /etc/udev/rules.d/99_usb0.rules with content:
+    KERNEL=="ttyUSB0", SYMLINK+="serialFTDI"
+    """
+    def __init__(self, tty: str = '/dev/serialFTDI'):
         self.tty = tty
         self.raw_array = b''
 
