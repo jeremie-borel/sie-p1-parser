@@ -76,14 +76,13 @@ class InfluxDb(Process):
             label == 'power'
         elif d.unit == 'Wh':
             label = 'energy'
-        else:
-            print("KK", d)
         return (
             Point("home_power")
             .tag("location", "atelier")
             .tag("sensor", "p1sie")
-            .field('unit', d.unit)
-            .field(label, d.value)
+            .tag("type", label)
+            .tag("unit", d.unit)
+            .field(name, float(d.value))
             .time(d.time)
         )
 
@@ -99,7 +98,7 @@ class InfluxDb(Process):
             ]
 
             print(f"will write now")
-            test = self.api.write(
+            self.api.write(
                 bucket=bucket,
                 record=points,
                 write_precision=WritePrecision.S
