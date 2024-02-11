@@ -125,7 +125,7 @@ class SieP1Reader:
                     full_data = b''
 
     def read(self):
-        for frame in self.get_frame():
+        for frame in self._get_frame():
             data = {
                 'time': datetime.datetime.now(tz=datetime.UTC)
             }
