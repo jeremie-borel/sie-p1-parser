@@ -101,6 +101,7 @@ class SieP1Reader:
 
     def read(self) -> Generator[list[int], None, None]:
         # Reads frames until final=True and return the parsed dlms objects.
+        payloads = b''
         for data_frame in self._get_frame():
             try:
                 frame = UnnumberedInformationFrame.from_bytes(data_frame)
