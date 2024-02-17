@@ -1,54 +1,24 @@
 """Proof of concept for a lame script that parses HDLC frames coming from P1 port for ASKRA AM550 meters."""
-import logging
-import serial
-import time
-import datetime
-import sys
-
 from typing import Generator
 
-from p1parser.stats import PhysicalData
+import logging
+import datetime
+import serial
+import time
+from collections import namedtuple
+
+from dlms_cosem.cosem import Obis
+from dlms_cosem.hdlc.frames import UnnumberedInformationFrame
+from dlms_cosem.hdlc.exceptions import HdlcParsingError
+from dlms_cosem.protocol.xdlms.data_notification import DataNotification
+from dlms_cosem.utils import parse_as_dlms_data
+
+TimedResults = namedtuple('TimedResults', 'datetime results')
 
 # flag wrapping hdlc frames
 flag_char = bytes.fromhex('7e')
-# starts a frame sequence
-start_seq = bytes.fromhex('7ea8a4cf0223039996e6e700')
-# matches between value and expnoent. Used to tell apart 2 bytes from 4 bytes values
-middle_pattern = bytes.fromhex('02020f')
 
 log = logging.getLogger(__name__)
-
-
-def format(raw: str) -> str:
-    """Roughly format a frame to make it more or less human readable"""
-    raw = raw.replace('02020906', '\n  0202 0906')
-    raw = raw.replace('02030906', '\n  0203 0906')
-
-    raw = raw.replace('7ea8a4cf0223039996e6e700',
-                      '7e a8a4 cf 0223 039996 e6e700\n')
-    raw = raw[:-6] + '\n' + raw[-6:-2] + ' ' + raw[-2:]
-    return raw
-
-
-def _parse_value(sig: bytearray, frame: bytearray) -> int:
-    pos = frame.find(sig)
-    if pos < 0:
-        raise ValueError(f"Could not find {sig.hex()}")
-    start = pos + len(sig)
-    middle = frame.find(middle_pattern, start)
-    if middle < 0 or middle - start > 12:
-        raise ValueError(
-            f"Could not find middle value in {frame[start:start+20].hex()}")
-
-    byte_mantis = frame[start:middle]
-    byte_exponent = frame[middle+3:middle+4]
-
-    # we use two different methods because exponent is signed.
-    mantis = int.from_bytes(byte_mantis, byteorder="big", signed=False)
-    exponent = int.from_bytes(byte_exponent, byteorder="big", signed=True)
-    # exponent = struct.unpack('>b', byte_exponent)[0]
-
-    return round(mantis*10**exponent, 4)
 
 
 _map = [
@@ -65,7 +35,6 @@ _map = [
     ('020309060100020801ff06', 'energy_export_tarif_plein', 'Wh'),
     ('020309060100020802ff06', 'energy_export_tarif_plein', 'Wh'),
 ]
-
 
 def get_map() -> list[tuple[str, str]]:
     return [
@@ -96,82 +65,66 @@ class SieP1Reader:
 
     # one should tweak the tty to its need.
     def _get_frame(self) -> Generator[bytearray, None, None]:
-        with serial.Serial(
+        serial_socket = serial.Serial(
             self.tty,
             baudrate=115200,
             bytesize=8,
             parity='N',
             stopbits=1,
             timeout=3
-        ) as ser:
-            full_data = b''
-            bytes_array = b''
+        )
+        bytes_array = b''
+        with serial_socket:
             while True:
-                time.sleep(0.5)
-                b = ser.read_until(expected=flag_char, size=1500)
-                bytes_array += b
-                self.raw_array += b
+                raw_data = serial_socket.read_until(expected=flag_char)
+                if not raw_data:
+                    time.sleep(0.1)
+                    continue
+                    
+                bytes_array += raw_data
 
-                hdlc_flag = bytes_array.find(flag_char, 0)
-                end_flag = bytes_array.find(flag_char, hdlc_flag+1)
+                start_flag = bytes_array.find(flag_char, 0)
+                end_flag = bytes_array.find(flag_char, start_flag+1)
 
-                if end_flag < 0 or hdlc_flag < 0:
+                if end_flag < 0 or start_flag < 0:
                     continue
 
                 # not a frame. We took an end as a start.
-                if end_flag - hdlc_flag < 8:
-                    hdlc_flag = end_flag
-                    end_flag = bytes_array.find(flag_char, hdlc_flag+1)
+                # Truncates the beginning
+                if end_flag - start_flag < 8:
+                    bytes_array = bytes_array[end_flag:]
+                    continue
 
-                data_frame = bytes_array[hdlc_flag:end_flag+1]
+                data_frame = bytes_array[start_flag:end_flag+1]
                 bytes_array = bytes_array[end_flag+1:]
+                yield data_frame
 
-                # if begin of frame matches start signature, we have in hand
-                # the previous packet ended.
-                if data_frame[:len(start_seq)] == start_seq:
-                    self.raw_array = b''
-                    full_data = data_frame
-                    continue
-
-                if data_frame[3:6] != bytes.fromhex('cf0223'):
-                    print(
-                        "Frame header is not as expected. Resetting full frame.", file=sys.stderr)
-                    full_data = b""
-                    continue
-
-                head_size = 9
-                # appends data after flag + 7bytes = 8 bytes.
-                # truncate current frame from the CRC and end flag bytes (3)
-
-                full_data = full_data[:-3] + data_frame[head_size:]
-
-                if data_frame[1:3] == bytes.fromhex('a02e'):
-                    yield full_data
-                    full_data = b''
-
-    def read(self) -> Generator[dict, None, None]:
-        for frame in self._get_frame():
-            data = {}
-            t = datetime.datetime.now(tz=datetime.timezone.utc)
-            error = False
-            for signature, name, unit in _map:
-                try:
-                    data[name] = PhysicalData(
-                        t, 
-                        _parse_value(
-                            sig=bytes.fromhex(signature),
-                            frame=frame,
-                        ),
-                        unit,
-                    )
-                except ValueError as e:
-                    log.error("Could not parse data:")
-                    error = True                    
-            if error:
+    def read(self) -> Generator[list[int], None, None]:
+        # Reads frames until final=True and return the parsed dlms objects.
+        for data_frame in self._get_frame():
+            try:
+                frame = UnnumberedInformationFrame.from_bytes(data_frame)
+                payloads += frame.payload
+            except HdlcParsingError:
+                log.error("Skipped a frame")
+                payloads = b''
                 continue
 
-            log.debug(f"Data framed parsed: {data}")
-            yield data
+            if frame.final:
+                try:       
+                    # first 3 bytes should be discarded as per
+                    # https://github.com/u9n/dlms-cosem/blob/fb3a66980352beba1d4ab26d6c0ea34de2919aef/examples/parse_norwegian_han.py#L32
+                    dn = DataNotification.from_bytes(payloads[3:])
+                except ValueError:
+                    log.error("Could not parse the payload. Skipping this frame.")
+                    payloads = b''
+                    continue
+                payloads = b''
+
+                result = parse_as_dlms_data(dn.body)
+                t = dn.date_time or datetime.datetime.now(tz=datetime.timezone.utc)
+
+                yield t, result
 
 
 def main():
