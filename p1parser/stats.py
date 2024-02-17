@@ -1,34 +1,37 @@
 from typing import Any
 import datetime
+import copy
+
 from collections import namedtuple
 
 PhysicalData = namedtuple('PhysicalData', 'time value unit')
 
 # https://www.timescale.com/blog/what-time-weighted-averages-are-and-why-you-should-care/
 class TimeWeightedAverage:
-    t0: datetime.datetime
-    ti: datetime.datetime
-    vi: float
-    sum: float
+    # t0: datetime.datetime
+    # ti: datetime.datetime
+    # vi: float
+    # sum: float
 
     def __init__(self):
-        self._inialize = False
+        self._initialize = False
         self.sum = 0
 
     def reset(self):
-        self._inialize = False        
+        self._initialize = False        
 
     def __call__(self, t: datetime.datetime, v: float) -> None:
-        if not self._inialize:
-            self.t0 = t
-            self.ti = t
+        tt = copy.copy(t)
+        if not self._initialize:
+            self.t0 = tt
+            self.ti = tt
             self.vi = v
             self.sum = 0
-            self._inialize = True
+            self._initialize = True
             return
 
         self.sum += (self.vi+v)/2*(t-self.ti).total_seconds()
-        self.ti = t
+        self.ti = tt
         self.vi = v
 
     def mean(self) -> tuple[datetime.datetime, float]:
@@ -48,7 +51,8 @@ class LastValue:
         pass
 
     def __call__(self, t: datetime.datetime, v: float) -> None:
-        self.ti = t
+        tt = copy.copy(t)
+        self.ti = tt
         self.vi = v
 
     def mean(self) -> tuple[datetime.datetime, float]:

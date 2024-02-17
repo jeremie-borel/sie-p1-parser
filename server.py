@@ -8,8 +8,6 @@ from multiprocessing import Process
 import random
 from ctypes import Structure, c_double, c_float
 
-class Point(Structure):
-    _fields_ = [('x', c_float), ('y', c_float)]
 
 
 class CustomManager(SyncManager):
@@ -43,9 +41,6 @@ def main():
     while True:
         time.sleep(5)
     print("starting server")
-    # s = m.get_server()
-    # s.serve_forever()
-    # print("never here")
 
 if __name__ == '__main__':
     main()

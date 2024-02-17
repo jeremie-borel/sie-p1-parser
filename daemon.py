@@ -3,7 +3,6 @@
 import time
 import datetime
 
-from multiprocessing.managers import SyncManager
 from multiprocessing import Process, Manager
 
 from influxdb_client import Point
@@ -13,8 +12,8 @@ from influxdb_client.client.write_api import (
     WritePrecision,
 )
 
-
-from p1parser.p1reader import SieP1Reader, get_map
+from p1parser.translator import get_meters, get_name
+from p1parser.p1reader import SieP1Reader
 from p1parser.stats import TimeWeightedAverage, LastValue, PhysicalData
 
 from p1parser.tokens import (
@@ -32,17 +31,14 @@ client = InfluxDBClient(
 )
 
 
-class CustomManager(SyncManager):
-    pass
-
 
 class SieWorker(Process):
     def __init__(self, shared_dict: dict):
-        self.reader = SieP1Reader()
         self.data = shared_dict
+        self.reader = SieP1Reader()
 
-        for name, unit in get_map():
-            if unit in ['W', 'A', 'V']:
+        for obis, name, unit in get_meters():
+            if unit in ['A', 'W', 'V']:
                 self.data[name] = {
                     'twa': TimeWeightedAverage(),
                     'unit': unit,
@@ -55,9 +51,17 @@ class SieWorker(Process):
         super().__init__()
 
     def run(self):
-        for data in self.reader.read():
-            for key, phd in data.items():
-                self.data[key]['twa'](phd.time, phd.value)
+        for ct, all_data in self.reader.read():
+            for item in all_data:
+                if len(item) < 3:
+                    continue
+                obis, value, (exponent, _unit) = item
+                key = get_name(obis)
+                if not key:
+                    continue
+                v = float(round(value*10**exponent, 4))
+                print(key, v)
+                self.data[key]['twa'](ct, v)
 
 
 class InfluxDb(Process):
@@ -95,10 +99,15 @@ class InfluxDb(Process):
                 time.sleep(2)
                 continue
 
-            points = [
-                self.as_point(key, arg)
-                for key, arg in self.data.items()
-            ]
+            try:
+                points = []
+                for key, arg in self.data.items():
+                    print(key)
+                    points.append(self.as_point(key, arg))
+            except AttributeError as e:
+                print(f"Wrong object initialzation: {e}")
+                time.sleep(5)
+                continue
 
             print(f"write data")
             self.api.write(
