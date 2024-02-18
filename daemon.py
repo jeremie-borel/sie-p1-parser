@@ -1,8 +1,10 @@
 # https://stackoverflow.com/questions/2545961/how-to-synchronize-a-python-dict-with-multiprocessing
 # dummy demo of a server connecting sharing a dict to a client
 import time
+import logging
 import datetime
 import urllib3
+from json import dumps
 from multiprocessing import Process, Manager, Lock
 
 from influxdb_client import Point
@@ -14,14 +16,20 @@ from influxdb_client.client.write_api import (
 
 from p1parser.translator import get_meters
 from p1parser.p1reader import SieP1Reader
-from p1parser.stats import TimeWeightedAverage, LastValue, PhysicalData
+from p1parser.stats import TimeWeightedAverage, LastValue
+
 
 from p1parser.tokens import (
     token,
     host,
     orgid,
 )
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+log = logging.getLogger(__name__)
 
 bucket = "dummy"
 client = InfluxDBClient(
@@ -45,10 +53,13 @@ class SieWorker(Process):
             else:
                 self.data[name] = LastValue(unit)
 
+        self.data['evcc'] = {}
         super().__init__()
 
     def run(self):
+        # starts infinite loop
         for ct, all_data in self.reader.read():
+            evcc = {'power': 0}
             for item in all_data:
                 if len(item) < 3:
                     continue
@@ -60,8 +71,14 @@ class SieWorker(Process):
                 v = float(round(value*10**exponent, 4))
                 twa = self.data[name]
                 twa.push(ct, v)
+                # sign of power must follow evcc conventions
+                if name == 'input_power' and v > 0:
+                    evcc['power'] = int(v)
+                elif name == 'output_power' and v > 0:
+                    evcc['power'] = -int(v)
                 # re-writes dict so that shared memory is updated.
                 self.data[name] = twa
+            self.data['evcc'] = evcc
 
 
 class InfluxDb(Process):
@@ -99,6 +116,8 @@ class InfluxDb(Process):
             try:
                 points = []
                 for key, twa in self.data.items():
+                    if key == 'evcc':
+                        continue
                     ct, value = twa.mean()
                     twa.reset()
                     # force update of shared memory
@@ -111,7 +130,7 @@ class InfluxDb(Process):
 
             time.sleep(10)
 
-            print(f"write data")
+            log.debug(f"Writing to bucket {bucket}")
             self.api.write(
                 bucket=bucket,
                 record=points,
@@ -119,6 +138,26 @@ class InfluxDb(Process):
             )
             time.sleep(30)
 
+class GetHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        copy = {k:v for k,v in self.server.data.get('evcc',{}).items()}
+        self.wfile.write(dumps(copy).encode())
+
+class MyHttpServer(HTTPServer):
+    def __init__(self, shared_dict):
+        self.data = shared_dict
+        super().__init__(('0.0.0.0', 8123), GetHandler)
+
+class HttpProcess(Process):
+    def __init__(self, shared_dict: dict):
+        self.data = shared_dict
+        self.server = MyHttpServer(shared_dict)
+        super().__init__()
+
+    def run(self):
+        self.server.serve_forever()
 
 def main():
     m = Manager()
@@ -128,8 +167,10 @@ def main():
     time.sleep(10)
     InfluxDb(shared_dict).start()
 
+    HttpProcess(shared_dict).start()
+
     while True:
-        time.sleep(5)
+        time.sleep(50)
 
 
 if __name__ == '__main__':
