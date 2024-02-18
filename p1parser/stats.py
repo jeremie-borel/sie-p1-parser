@@ -13,14 +13,15 @@ class TimeWeightedAverage:
     # vi: float
     # sum: float
 
-    def __init__(self):
+    def __init__(self, unit:str):
+        self.unit = unit
         self._initialize = False
         self.sum = 0
 
     def reset(self):
         self._initialize = False        
 
-    def __call__(self, t: datetime.datetime, v: float) -> None:
+    def push(self, t: datetime.datetime, v: float) -> None:
         tt = copy.copy(t)
         if not self._initialize:
             self.t0 = tt
@@ -47,12 +48,16 @@ class LastValue:
     ti: datetime.datetime
     vi: float
 
+
+    def __init__(self, unit:str) -> None:
+        self.unit = unit
+        self._initialize = None
+
     def reset(self):
         pass
 
-    def __call__(self, t: datetime.datetime, v: float) -> None:
-        tt = copy.copy(t)
-        self.ti = tt
+    def push(self, t: datetime.datetime, v: float) -> None:
+        self.ti = t
         self.vi = v
 
     def mean(self) -> tuple[datetime.datetime, float]:
@@ -69,9 +74,10 @@ def main():
         # (datetime.datetime(2024, 1, 18, 22, 7), 1.0),
         # (datetime.datetime(2024, 1, 18, 22, 30), 8.0),
     ]
-    twa = TimeWeightedAverage()
+    print("run me")
+    twa = TimeWeightedAverage('')
     for t,v in data:
-        twa(t,v)
+        twa.push(t,v)
     print(twa.mean())
 
 if __name__ == '__main__':

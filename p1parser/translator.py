@@ -1,9 +1,5 @@
 from typing import Sequence, Generator
 
-from collections import namedtuple
-
-PhysicalData = namedtuple('PhysicalData', 'time value unit')
-
 _obis_map = [
     (bytes.fromhex('0100010700ff'), 'input_power', 'W'),
     (bytes.fromhex('0100020700ff'), 'output_power', 'W'),
