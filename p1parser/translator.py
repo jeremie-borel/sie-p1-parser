@@ -28,8 +28,3 @@ _unit_map = {
 def get_meters() -> Generator[tuple[bytes, str, str],None,None]:
     for obis, name,unit in _obis_map:
         yield obis, name, unit
-
-def get_name(obis:bytes):
-    for tobis, name, unit in _obis_map:
-        if tobis == obis:
-            return name

@@ -77,16 +77,22 @@ class SieP1Reader:
     def read(self) -> Generator[list[int], None, None]:
         # Reads frames until final=True and return the parsed dlms objects.
         payloads = b''
+        error_flag = False
         for data_frame in self._get_frame():
             try:
                 frame = UnnumberedInformationFrame.from_bytes(data_frame)
                 payloads += frame.payload
-            except HdlcParsingError:
-                log.error("Skipped a frame")
+            except HdlcParsingError as e:
+                log.error(f"Skipped a frame: {e}")
+                error_flag = True
                 payloads = b''
                 continue
 
             if frame.final:
+                if error_flag:
+                    error_flag = False
+                    print("starting fresh after final frame")
+                    continue
                 try:       
                     # first 3 bytes should be discarded as per
                     # https://github.com/u9n/dlms-cosem/blob/fb3a66980352beba1d4ab26d6c0ea34de2919aef/examples/parse_norwegian_han.py#L32
