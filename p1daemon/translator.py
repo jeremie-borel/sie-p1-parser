@@ -18,12 +18,12 @@ _obis_map = [
     (bytes.fromhex('0100020801ff'), 'energy_export_tarif_plein', 'Wh'),
     (bytes.fromhex('0100020802ff'), 'energy_export_tarif_plein', 'Wh'),
 ]
-_unit_map = {
-    27:'W',
-    30:'Wh',
-    35:'V',
-    33:'A',
-}
+# _unit_map = {
+#     27:'W',
+#     30:'Wh',
+#     35:'V',
+#     33:'A',
+# }
 
 def get_meters() -> Generator[tuple[bytes, str, str],None,None]:
     for obis, name,unit in _obis_map:

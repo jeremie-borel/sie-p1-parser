@@ -6,11 +6,12 @@ import datetime
 import serial
 import time
 
-from dlms_cosem.cosem import Obis
 from dlms_cosem.hdlc.frames import UnnumberedInformationFrame
 from dlms_cosem.hdlc.exceptions import HdlcParsingError
 from dlms_cosem.protocol.xdlms.data_notification import DataNotification
 from dlms_cosem.utils import parse_as_dlms_data
+
+from .config import serial_tty
 
 # flag wrapping hdlc frames
 flag_char = bytes.fromhex('7e')
@@ -34,7 +35,8 @@ class SieP1Reader:
     to allow to read the tty with a unpriviledge user and to login and logout to have the new
     group permissions applied.
     """
-    def __init__(self, tty: str = '/dev/serialFTDI'):
+
+    def __init__(self, tty: str = serial_tty):
         self.tty = tty
         self.raw_array = b''
 
@@ -55,7 +57,7 @@ class SieP1Reader:
                 if not raw_data:
                     time.sleep(0.1)
                     continue
-                    
+
                 bytes_array += raw_data
 
                 start_flag = bytes_array.find(flag_char, 0)
@@ -93,18 +95,20 @@ class SieP1Reader:
                     error_flag = False
                     print("starting fresh after final frame")
                     continue
-                try:       
+                try:
                     # first 3 bytes should be discarded as per
                     # https://github.com/u9n/dlms-cosem/blob/fb3a66980352beba1d4ab26d6c0ea34de2919aef/examples/parse_norwegian_han.py#L32
                     dn = DataNotification.from_bytes(payloads[3:])
                 except ValueError:
-                    log.error("Could not parse the payload. Skipping this frame.")
+                    log.error(
+                        "Could not parse the payload. Skipping this frame.")
                     payloads = b''
                     continue
                 payloads = b''
 
                 result = parse_as_dlms_data(dn.body)
-                t = dn.date_time or datetime.datetime.now(tz=datetime.timezone.utc)
+                t = dn.date_time or datetime.datetime.now(
+                    tz=datetime.timezone.utc)
 
                 yield t, result
 
@@ -119,7 +123,6 @@ def main():
         print("Time is ", dt)
         for item in data:
             print(item)
-
 
 
 if __name__ == '__main__':
