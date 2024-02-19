@@ -43,6 +43,7 @@ class SieWorker(Process):
 
     def run(self):
         # starts infinite loop
+        log.info("Running worker for sie reading.")
         for ct, all_data in self.reader.read():
             evcc = {'power': 0}
             for item in all_data:

@@ -80,7 +80,7 @@ class SieP1Reader:
         # Reads frames until final=True and return the parsed dlms objects.
         payloads = b''
         error_flag = False
-        for data_frame in self._get_frame():
+        for count, data_frame in enumerate(self._get_frame()):
             try:
                 frame = UnnumberedInformationFrame.from_bytes(data_frame)
                 payloads += frame.payload
@@ -93,7 +93,7 @@ class SieP1Reader:
             if frame.final:
                 if error_flag:
                     error_flag = False
-                    print("starting fresh after final frame")
+                    log.warning("starting fresh after final frame")
                     continue
                 try:
                     # first 3 bytes should be discarded as per
@@ -108,8 +108,10 @@ class SieP1Reader:
 
                 result = parse_as_dlms_data(dn.body)
                 t = dn.date_time or datetime.datetime.now(
-                    tz=datetime.timezone.utc)
-
+                    tz=datetime.timezone.utc
+                )
+                if count%50==0:
+                    log.debug(f"P1 parser returns frame {count}")
                 yield t, result
 
 

@@ -31,4 +31,5 @@ class HttpWorker(Process):
         super().__init__()
 
     def run(self):
+        log.info(f"Http Server listening on {address}:{port}.")
         self.server.serve_forever()
