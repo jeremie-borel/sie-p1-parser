@@ -84,35 +84,45 @@ class SieP1Reader:
             try:
                 frame = UnnumberedInformationFrame.from_bytes(data_frame)
                 payloads += frame.payload
-            except HdlcParsingError as e:
-                log.error(f"Skipped a frame: {e}")
-                error_flag = True
-                payloads = b''
-                continue
 
-            if frame.final:
-                if error_flag:
-                    error_flag = False
-                    log.warning("starting fresh after final frame")
-                    continue
-                try:
+                if frame.final:
+                    if error_flag:
+                        error_flag = False
+                        log.warning("starting fresh after final frame")
+                        continue
+
                     # first 3 bytes should be discarded as per
                     # https://github.com/u9n/dlms-cosem/blob/fb3a66980352beba1d4ab26d6c0ea34de2919aef/examples/parse_norwegian_han.py#L32
                     dn = DataNotification.from_bytes(payloads[3:])
-                except ValueError:
-                    log.error(
-                        "Could not parse the payload. Skipping this frame.")
-                    payloads = b''
-                    continue
-                payloads = b''
 
-                result = parse_as_dlms_data(dn.body)
-                t = dn.date_time or datetime.datetime.now(
-                    tz=datetime.timezone.utc
-                )
-                if count%50==0:
-                    log.debug(f"P1 parser returns frame {count}")
-                yield t, result
+                    result = parse_as_dlms_data(dn.body)
+                    payloads = b''
+                    t = dn.date_time or datetime.datetime.now(
+                        tz=datetime.timezone.utc
+                    )
+                    if count%50==0:
+                        log.debug(f"P1 parser returns frame {count}"
+                    )
+                    yield t, result
+
+            except KeyError as e:
+                log.error("Probably parse_as_dlms that failed.")
+                log.exception(e)
+                payloads = b''
+            except ValueError:
+                log.error("Could not parse the payload. Skipping this frame.")
+                log.exception(e)
+                payloads = b''
+            except HdlcParsingError as e:
+                log.error(f"Skipped a frame")
+                log.exception(e)
+                error_flag = True
+                payloads = b''
+            except Exception as e:
+                log.error("Generic error:")
+                log.exception(e)
+                error_flag = True
+                payloads = b''
 
 
 def main():
