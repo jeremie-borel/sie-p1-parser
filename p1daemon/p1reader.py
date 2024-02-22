@@ -109,7 +109,7 @@ class SieP1Reader:
                 log.error("Probably parse_as_dlms that failed.")
                 log.exception(e)
                 payloads = b''
-            except ValueError:
+            except ValueError as e:
                 log.error("Could not parse the payload. Skipping this frame.")
                 log.exception(e)
                 payloads = b''
