@@ -49,7 +49,7 @@ class InfluxDbWorker(Process):
             label = 'energy'
 
         return (
-            Point("home_power")
+            Point("house_power")
             .tag("sensor", "p1sie")
             .tag("type", label)
             .tag("unit", unit)
