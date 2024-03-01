@@ -1,3 +1,4 @@
-pyserial
-dlms-cosem
-influxdb-client
+pyserial==3.5
+dlms-cosem==24.1.0
+influxdb-client==1.40.0
+requests==2.31.0

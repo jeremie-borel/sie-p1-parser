@@ -3,7 +3,6 @@
 import time
 import logging
 import datetime
-import urllib3
 from multiprocessing import Process
 
 from influxdb_client import Point
@@ -20,7 +19,9 @@ from ..config import (
     bucket,
 )
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from urllib3.exceptions import InsecureRequestWarning
+from urllib3 import disable_warnings
+disable_warnings(InsecureRequestWarning)
 
 log = logging.getLogger(__name__)
 
