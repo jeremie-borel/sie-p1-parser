@@ -11,11 +11,10 @@ disable_warnings(InsecureRequestWarning)
 from ..config import (
     SOLAREDGE_API,
     SOLAREDGE_ID,
+    EVCC_KEY,
 )
 
 from multiprocessing import Process
-
-from ..config import EVCC_KEY
 
 MIN_QUERY_INTERVAL = 15*60 # min time between updates of SE value.
 QUERY_TIME_RANGE = (5,20)
@@ -48,10 +47,10 @@ def query_solaredge(time_unit: str = 'QUARTER_OF_AN_HOUR') -> dict:
     """
     now = datetime.datetime.now(tz=_zurich)
 
-    url = f"https://monitoringapi.solaredge.com/site/{SOLAREDGE_ID}/power.json"
+    url = f"https://monitoringapi.solaredge.com/site/{SOLAREDGE_ID}/powerDetails.json"
     kwargs = {
         'api_key': SOLAREDGE_API,
-        'startTime': as_datetime(now - datetime.timedelta(minutes=10)),
+        'startTime': as_datetime(now - datetime.timedelta(minutes=1)),
         'endTime': as_datetime(now),
         'timeUnit': time_unit,
         'meters': "PRODUCTION"
@@ -67,7 +66,13 @@ def query_power_value() -> float:
         log.error(f"Got an exception while querying solaredge server")
         log.exception(e)
         return 0.0
-    return data['power']['values'][0]['value']
+    try:
+        val = float(data['powerDetails']['meters'][0]['values'][0]['value'])
+    except Exception as e:
+        log.error(f"Got an exception while querying solaredge server")
+        log.exception(e)
+        return 0.0
+    return round(val,3)
 
 class SolarEdgeWorker(Process):
     def __init__(self, shared_dict: dict):
@@ -90,7 +95,7 @@ class SolarEdgeWorker(Process):
                 log.info("It's night return 0 solar power.")
                 value = 0.0
             
-            copy = {k:v for k,v in self.data.items()}
+            copy = {k:v for k,v in self.data.get(EVCC_KEY,{}).items()}
             copy['solar_power'] = value
             self.data[EVCC_KEY] = copy
             

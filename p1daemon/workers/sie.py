@@ -61,5 +61,6 @@ class SieWorker(Process):
                 # re-writes dict so that shared memory is updated.
                 self.data[name] = twa
 
-            current_data = {k:v for k,v in self.data.items()}
-            self.data[EVCC_KEY] = current_data.update(evcc)
+            current_data = {k:v for k,v in self.data.get(EVCC_KEY, {}).items()}
+            current_data.update(evcc)
+            self.data[EVCC_KEY] = current_data

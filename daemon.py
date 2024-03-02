@@ -8,6 +8,7 @@ from p1daemon.workers import (
     HttpWorker,
     SieWorker,
     InfluxDbWorker,
+    SolarEdgeWorker,
 )
 
 log = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ def main():
     time.sleep(10)
     InfluxDbWorker(shared_dict).start()
     HttpWorker(shared_dict).start()
+    SolarEdgeWorker(shared_dict).start()
 
     while True:
         time.sleep(50)
