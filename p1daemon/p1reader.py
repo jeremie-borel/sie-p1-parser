@@ -47,35 +47,23 @@ class SieP1Reader:
             bytesize=8,
             parity='N',
             stopbits=1,
-            timeout=3
+            timeout=1
         )
         bytes_array = b''
         with serial_socket:
             while True:
                 raw_data = serial_socket.read_until(expected=flag_char)
                 if not raw_data:
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     continue
-
                 bytes_array += raw_data
 
                 if len(raw_data) == 1:
                     continue
 
-                start_flag = bytes_array.find(flag_char, 0)
-                end_flag = bytes_array.find(flag_char, start_flag+1)
 
-                if end_flag < 0 or start_flag < 0:
-                    continue
-
-                # not a frame. We took an end as a start.
-                # Truncates the beginning
-                if end_flag - start_flag < 8:
-                    bytes_array = bytes_array[end_flag:]
-                    continue
-
-                data_frame = bytes_array[start_flag:end_flag+1]
-                bytes_array = bytes_array[end_flag+1:]
+                data_frame = bytes_array[:]
+                bytes_array = b''
                 yield data_frame
 
     def read(self) -> Generator[list[int], None, None]:
@@ -83,6 +71,7 @@ class SieP1Reader:
         payloads = b''
         error_flag = False
         for count, data_frame in enumerate(self._get_frame()):
+            print("Got frame:", data_frame.hex())
             try:
                 frame = UnnumberedInformationFrame.from_bytes(data_frame)
                 payloads += frame.payload
