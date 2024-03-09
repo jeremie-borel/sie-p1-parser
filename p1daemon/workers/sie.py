@@ -1,4 +1,6 @@
 import logging
+import datetime
+
 from multiprocessing import Process
 
 from p1daemon.translator import get_meters
@@ -9,6 +11,7 @@ from p1daemon.stats import TimeWeightedAverage, LastValue
 from ..config import (
     EVCC_KEY,
 )
+from ..stats import as_datetime, _zurich
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +48,11 @@ class SieWorker(Process):
         # starts infinite loop
         log.info("Running worker for sie reading.")
         for ct, all_data in self.reader.read():
-            evcc = {'power': 0}
+            now = datetime.datetime.now(tz=_zurich)
+            evcc = {
+                'power': 0,
+                'pw_stamp': as_datetime(now),
+            }
             for item in all_data:
                 if len(item) < 3:
                     continue

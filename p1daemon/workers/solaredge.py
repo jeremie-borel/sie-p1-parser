@@ -1,7 +1,6 @@
 import datetime
 import time
 import requests
-from zoneinfo import ZoneInfo
 import logging
 
 from urllib3.exceptions import InsecureRequestWarning
@@ -13,32 +12,17 @@ from ..config import (
     SOLAREDGE_ID,
     EVCC_KEY,
 )
+from ..stats import (
+    _zurich,
+    as_datetime,
+)
 
 from multiprocessing import Process
 
 MIN_QUERY_INTERVAL = 15*60 # min time between updates of SE value.
 QUERY_TIME_RANGE = (5,20)
 
-_zurich = ZoneInfo("Europe/Zurich")
 log = logging.getLogger(__name__)
-
-def as_date(date:datetime) -> str:
-    """Returns the date according to SolarEdge format API"""
-    return date.strftime('%Y-%m-%d')
-
-def as_datetime(date:datetime) -> str:
-    """Returns the datetime according to SolarEdge
-    format API (see manual page 22 for example).
-    
-    Assumes TZ is local tz (i.e. Zurich)"""
-    return date.strftime('%Y-%m-%d %H:%M:%S')
-
-def from_stamp(date:str) -> datetime:
-    """Returns the datetime according to SolarEdge
-    format API (see manual page 22 for example)"""
-    d = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
-    d = _zurich.localize(d)
-    return d
 
 def query_solaredge(time_unit: str = 'QUARTER_OF_AN_HOUR') -> dict:
     """
@@ -95,8 +79,10 @@ class SolarEdgeWorker(Process):
                 log.info("It's night return 0 solar power.")
                 value = 0.0
             
+            now = datetime.datetime.now(tz=_zurich)
             copy = {k:v for k,v in self.data.get(EVCC_KEY,{}).items()}
             copy['solar_power'] = value
+            copy['solar_stamp'] = as_datetime(now)
             self.data[EVCC_KEY] = copy
             
             time.sleep(MIN_QUERY_INTERVAL)

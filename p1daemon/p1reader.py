@@ -11,8 +11,6 @@ from dlms_cosem.hdlc.exceptions import HdlcParsingError
 from dlms_cosem.protocol.xdlms.data_notification import DataNotification
 from dlms_cosem.utils import parse_as_dlms_data
 
-from .config import serial_tty
-
 # flag wrapping hdlc frames
 flag_char = bytes.fromhex('7e')
 
@@ -36,8 +34,9 @@ class SieP1Reader:
     group permissions applied.
     """
 
-    def __init__(self, tty: str = serial_tty):
-        self.tty = tty
+    def __init__(self, tty: str = ""):
+        from p1daemon.config import serial_tty
+        self.tty = tty or serial_tty
         self.raw_array = b''
 
     # one should tweak the tty to its need.
@@ -59,6 +58,9 @@ class SieP1Reader:
                     continue
 
                 bytes_array += raw_data
+
+                if len(raw_data) == 1:
+                    continue
 
                 start_flag = bytes_array.find(flag_char, 0)
                 end_flag = bytes_array.find(flag_char, start_flag+1)
@@ -126,8 +128,10 @@ class SieP1Reader:
 
 
 def main():
-    import sys
+    import sys, os
+    dir_path = os.path.dirname(os.path.realpath(__file__))
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    sys.path.append(os.path.join(dir_path, '../'))
 
     reader = SieP1Reader()
     log.info("Hit Ctrl+C to stop the script")

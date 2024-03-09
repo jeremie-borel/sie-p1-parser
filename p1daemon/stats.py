@@ -1,5 +1,8 @@
 import datetime
 import copy
+from zoneinfo import ZoneInfo
+
+_zurich = ZoneInfo("Europe/Zurich")
 
 # https://www.timescale.com/blog/what-time-weighted-averages-are-and-why-you-should-care/
 class TimeWeightedAverage:
@@ -57,6 +60,26 @@ class LastValue:
 
     def mean(self) -> tuple[datetime.datetime, float]:
         return self.ti, self.vi
+
+
+
+def as_date(date:datetime) -> str:
+    """Returns the date according to SolarEdge format API"""
+    return date.strftime('%Y-%m-%d')
+
+def as_datetime(date:datetime) -> str:
+    """Returns the datetime according to SolarEdge
+    format API (see manual page 22 for example).
+    
+    Assumes TZ is local tz (i.e. Zurich)"""
+    return date.strftime('%Y-%m-%d %H:%M:%S')
+
+def from_stamp(date:str) -> datetime:
+    """Returns the datetime according to SolarEdge
+    format API (see manual page 22 for example)"""
+    d = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+    d = _zurich.localize(d)
+    return d
 
 def main():
     data = [
