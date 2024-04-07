@@ -47,31 +47,43 @@ class SieP1Reader:
             bytesize=8,
             parity='N',
             stopbits=1,
-            timeout=1
+            timeout=3.5
         )
-        bytes_array = b''
+        block = b''
         with serial_socket:
             while True:
-                raw_data = serial_socket.read_until(expected=flag_char)
+                raw_data = serial_socket.read(size=50000)
                 if not raw_data:
-                    time.sleep(0.01)
+                    # time.sleep(0.01)
                     continue
-                bytes_array += raw_data
-
-                if len(raw_data) == 1:
+                if raw_data[0:1] == flag_char and raw_data[-1:] == flag_char:
+                        raw_data = raw_data[1:-1]
+                else:
+                    log.warning("Wrong HDLC flags.")
                     continue
 
+                subframes = raw_data.split(flag_char+flag_char)
+                trick = False
+                for i in range(len(subframes)):
+                    frame = subframes[i]
+                    if trick:
+                        frame = frame[1:]
+                        trick = False
+                    try:
+                        if subframes[i+1][0:1] == flag_char:
+                            frame += flag_char
+                            trick = True
+                    except IndexError:
+                        pass
+                    yield flag_char + frame + flag_char
 
-                data_frame = bytes_array[:]
-                bytes_array = b''
-                yield data_frame
 
     def read(self) -> Generator[list[int], None, None]:
         # Reads frames until final=True and return the parsed dlms objects.
         payloads = b''
         error_flag = False
         for count, data_frame in enumerate(self._get_frame()):
-            print("Got frame:", data_frame.hex())
+            # print("Got frame:", data_frame.hex())
             try:
                 frame = UnnumberedInformationFrame.from_bytes(data_frame)
                 payloads += frame.payload
