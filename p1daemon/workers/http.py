@@ -19,10 +19,14 @@ class _GetHandler(BaseHTTPRequestHandler):
         copy = {k:v for k,v in self.server.data.get(EVCC_KEY,{}).items()}
         self.wfile.write(dumps(copy).encode())
 
+    def log_request(code='-',size='-'):
+        pass
+
 class _MyHttpServer(HTTPServer):
     def __init__(self, shared_dict):
         self.data = shared_dict
         super().__init__((address, port), _GetHandler)
+
 
 class HttpWorker(Process):
     def __init__(self, shared_dict: dict):
