@@ -34,7 +34,7 @@ def query_solaredge(time_unit: str = 'QUARTER_OF_AN_HOUR') -> dict:
     url = f"https://monitoringapi.solaredge.com/site/{SOLAREDGE_ID}/powerDetails.json"
     kwargs = {
         'api_key': SOLAREDGE_API,
-        'startTime': as_datetime(now - datetime.timedelta(minutes=1)),
+        'startTime': as_datetime(now - datetime.timedelta(minutes=15)),
         'endTime': as_datetime(now),
         'timeUnit': time_unit,
         'meters': "PRODUCTION"
@@ -51,12 +51,17 @@ def query_power_value() -> float:
         log.exception(e)
         return 0.0
     try:
-        val = float(data['powerDetails']['meters'][0]['values'][0]['value'])
+        item = data['powerDetails']['meters'][0]['values'][-1]
     except Exception as e:
         log.error(f"Got an exception while querying solaredge server")
         log.exception(e)
         return 0.0
-    return round(val,3)
+    # the doc says that if "value" key is not here -> no data over the
+    # specifyied timerange
+    if "value" in item:
+        return round(float(item["value"]), 3)
+    
+    return 0.0
 
 class SolarEdgeWorker(Process):
     def __init__(self, shared_dict: dict):
