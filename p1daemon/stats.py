@@ -63,22 +63,22 @@ class LastValue:
 
 
 
-def as_date(date:datetime) -> str:
+def as_date(date:datetime.datetime) -> str:
     """Returns the date according to SolarEdge format API"""
     return date.strftime('%Y-%m-%d')
 
-def as_datetime(date:datetime) -> str:
+def as_datetime(date:datetime.datetime) -> str:
     """Returns the datetime according to SolarEdge
     format API (see manual page 22 for example).
     
     Assumes TZ is local tz (i.e. Zurich)"""
     return date.strftime('%Y-%m-%d %H:%M:%S')
 
-def from_stamp(date:str) -> datetime:
+def from_stamp(date:str) -> datetime.datetime:
     """Returns the datetime according to SolarEdge
     format API (see manual page 22 for example)"""
     d = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
-    d = _zurich.localize(d)
+    d = d.astimezone(_zurich)
     return d
 
 def main():
