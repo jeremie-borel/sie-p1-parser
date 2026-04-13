@@ -7,20 +7,13 @@ from multiprocessing import Process
 
 from influxdb_client import Point
 from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import (
-    SYNCHRONOUS,
-    WritePrecision,
-)
+from influxdb_client.client.write_api import SYNCHRONOUS, WritePrecision
 
-from ..config import (
-    token,
-    host,
-    orgid,
-    bucket,
-)
+from ..config import token, host, orgid, bucket
 
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3 import disable_warnings
+
 disable_warnings(InsecureRequestWarning)
 
 log = logging.getLogger(__name__)
@@ -29,25 +22,22 @@ log = logging.getLogger(__name__)
 class InfluxDbWorker(Process):
     def __init__(self, shared_dict: dict):
         self.data = shared_dict
-        self.client = InfluxDBClient(
-            url=host,
-            token=token,
-            org=orgid,
-            verify_ssl=False,
-        )
+        self.client = InfluxDBClient(url=host, token=token, org=orgid, verify_ssl=False)
         self.api = self.client.write_api(write_options=SYNCHRONOUS)
         super().__init__()
 
-    def as_point(self, name: str, ct: datetime.datetime, value: float, unit: str) -> Point:
-        label = 'value'
-        if unit == 'V':
-            label = 'voltage'
-        elif unit == 'A':
-            label = 'current'
-        elif unit == 'W':
-            label == 'power'
-        elif unit == 'Wh':
-            label = 'energy'
+    def as_point(
+        self, name: str, ct: datetime.datetime, value: float, unit: str
+    ) -> Point:
+        label = "value"
+        if unit == "V":
+            label = "voltage"
+        elif unit == "A":
+            label = "current"
+        elif unit == "W":
+            label = "power"
+        elif unit == "Wh":
+            label = "energy"
 
         return (
             Point("house_power")
@@ -63,11 +53,13 @@ class InfluxDbWorker(Process):
             if not self.data:
                 time.sleep(2)
                 continue
+            # once self.data is existing, wait 2 sec to initialize it correctly
+            time.sleep(2)
 
             try:
                 points = []
                 for key, twa in self.data.items():
-                    if key == 'evcc':
+                    if key == "evcc":
                         continue
                     ct, value = twa.mean()
                     twa.reset()
@@ -83,8 +75,6 @@ class InfluxDbWorker(Process):
 
             log.debug(f"Writing to bucket {bucket}")
             self.api.write(
-                bucket=bucket,
-                record=points,
-                write_precision=WritePrecision.S
+                bucket=bucket, record=points, write_precision=WritePrecision.S
             )
             time.sleep(30)
