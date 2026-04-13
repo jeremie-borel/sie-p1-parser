@@ -1,4 +1,4 @@
-from typing import Sequence, Generator
+from typing import Generator
 
 _obis_map = [
     (bytes.fromhex('0100010700ff'), 'input_power', 'W'),

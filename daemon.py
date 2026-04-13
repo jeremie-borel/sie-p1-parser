@@ -4,14 +4,10 @@ import time
 import logging
 from multiprocessing import Manager
 
-from p1daemon.workers import (
-    HttpWorker,
-    SieWorker,
-    InfluxDbWorker,
-    SolarEdgeWorker,
-)
+from p1daemon.workers import HttpWorker, SieWorker, InfluxDbWorker, SolarEdgeWorker
 
 log = logging.getLogger(__name__)
+
 
 def main():
     m = Manager()
@@ -27,8 +23,9 @@ def main():
         time.sleep(50)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
     log.info("Launching daemons.")

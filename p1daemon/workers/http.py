@@ -1,26 +1,23 @@
 import logging
 from json import dumps
 from multiprocessing import Process
-
-from ..config import (
-    address,
-    port,
-    EVCC_KEY,
-)
-
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+from ..config import address, port, EVCC_KEY
+
 log = logging.getLogger(__name__)
+
 
 class _GetHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        copy = {k:v for k,v in self.server.data.get(EVCC_KEY,{}).items()}
+        copy = {k: v for k, v in self.server.data.get(EVCC_KEY, {}).items()}
         self.wfile.write(dumps(copy).encode())
 
-    def log_request(code='-',size='-'):
+    def log_request(code="-", size="-"):
         pass
+
 
 class _MyHttpServer(HTTPServer):
     def __init__(self, shared_dict):
